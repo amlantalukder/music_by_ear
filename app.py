@@ -1,4 +1,4 @@
-from dash import Dash, html, Input, Output, dcc
+from dash import Dash, html, Input, Output, dcc, ctx
 import numpy as np
 import pygame as pg
 import time
@@ -79,11 +79,6 @@ notes, notes_freq = [], []
 num_total = num_right = 0
 note_index = -1
 pitch_base = "None"
-
-notes = [f'{k}{p}' for k in keys for p in pitch_levels]
-note_index = 0
-for _ in range(10):
-    playNote()
 
 def getNoteSelectors():
     return html.Tr(
@@ -184,7 +179,16 @@ app.layout = html.Div(
                             "display": "flex",
                             "justifyContent": "center"
                         }
-                    )
+                    ),
+                    html.Div(
+                        children=[
+                            html.Button(
+                                "Play Note",
+                                id=f"btn_play_note",
+                            )
+                        ]
+                    ),
+                     html.P(id='placeholder')
                 ],
                 style={
                     "width": "100%",
@@ -203,6 +207,20 @@ app.layout = html.Div(
             "padding": "20px"
         }
 )
+
+@app.callback(
+    Output("placeholder", "children"),
+    Input("btn_play_note", "n_clicks"),
+    prevent_initial_call = True
+)
+def playNote(play_btn):
+    global notes, note_index
+    if ctx.triggered_id == "play-btn": 
+        notes = [f'{k}{p}' for k in keys for p in pitch_levels]
+        note_index = 0
+        for _ in range(10):
+            playNote()
+
 
 if __name__ == '__main__':
     app.run_server(debug=True)
