@@ -213,9 +213,9 @@ app.layout = html.Div(
     Input("btn_play_note", "n_clicks"),
     prevent_initial_call = True
 )
-def playNote(play_btn):
+def playNoteCallback(play_btn):
     global notes, note_index
-    if ctx.triggered_id == "play-btn": 
+    if ctx.triggered_id == "btn_play_note": 
         notes = [f'{k}{p}' for k in keys for p in pitch_levels]
         note_index = 0
         for _ in range(10):
