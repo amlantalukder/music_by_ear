@@ -2,6 +2,10 @@ from dash import Dash, html, Input, Output, dcc, ctx
 import numpy as np
 import pygame as pg
 import time
+import base64
+
+sound_filename = "assets/notes/Piano.ff.C3.aiff"
+encoded_sound = base64.b64encode(open(sound_filename, 'rb').read())
 
 def selectNewNote():
     global note_index
@@ -188,7 +192,11 @@ app.layout = html.Div(
                             )
                         ]
                     ),
-                     html.P(id='placeholder')
+                     html.P(id='placeholder'),
+                     html.Audio(id='audio-player', src='data:audio/mpeg;base64,{}'.format(encoded_sound.decode()),
+                          controls=True,
+                          autoPlay=False,
+                          ),
                 ],
                 style={
                     "width": "100%",
@@ -208,6 +216,7 @@ app.layout = html.Div(
         }
 )
 
+'''
 @app.callback(
     Output("placeholder", "children"),
     Input("btn_play_note", "n_clicks"),
@@ -220,6 +229,19 @@ def playNoteCallback(play_btn):
         note_index = 0
         for _ in range(10):
             playNote()
+'''
+
+app.clientside_callback(
+    """
+    function(largeValue1, largeValue2) {
+        console.log('hello world');
+        var audio = new Audio('assets/notes/Piano.ff.C1.aiff');
+        audio.play();
+    }
+    """,
+    Output("placeholder", "children"),
+    Input("btn_play_note", "n_clicks")
+)
 
 
 if __name__ == '__main__':

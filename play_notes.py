@@ -75,13 +75,13 @@ pitch_levels = range(1, 8)
 notes, notes_freq = [], []
 num_total = num_right = 0
 note_index = -1
+pitch_base = 'None'
 
-if __name__ == '__main__':
-    
+if __name__ == "__main__":
+
     root = tk.Tk()
     root.title('Learn note sound and pitch')
 
-    pitch_base = 'None'
     pitch_base_frame = tk.Frame(root, bg="white", padx=10, pady=10)
     pitch_base_frame.pack()
     tk.Label(pitch_base_frame, text="Select a pitch base (optional):").pack(side=tk.LEFT, padx=5, pady=5)
