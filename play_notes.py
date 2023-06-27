@@ -13,10 +13,10 @@ def selectNewNote():
 def playNote():
     if note_index < 0: selectNewNote()
     if pitch_base != 'None':
-        note_path = f'assets/notes/Piano.ff.{pitch_base}.aiff'
+        note_path = f'assets/notes/{pitch_base}.aiff'
         pg.mixer.Sound(note_path).play()
         time.sleep(1)
-    note_path = f'assets/notes/Piano.ff.{notes[note_index]}.aiff'
+    note_path = f'assets/notes/{notes[note_index]}.aiff'
     pg.mixer.Sound(note_path).play()
     time.sleep(2)
     pg.mixer.stop()

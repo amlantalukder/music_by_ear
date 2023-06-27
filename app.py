@@ -1,90 +1,42 @@
-from dash import Dash, html, Input, Output, dcc, ctx
+from dash import Dash, html, Input, Output, dcc, callback, ctx, ALL
 import numpy as np
 import pygame as pg
 import time
-import base64
-
-sound_filename = "assets/notes/Piano.ff.C3.aiff"
-encoded_sound = base64.b64encode(open(sound_filename, 'rb').read())
-
-def selectNewNote():
-    global note_index
-    p = np.array(notes_freq)/np.sum(notes_freq)
-    note_index = np.random.choice(len(notes), 1, p=p)[0]
-    #print(notes[note_index])
-    #print(notes_freq, p)
-
-def playNote():
-    if note_index < 0: selectNewNote()
-    if pitch_base != 'None':
-        note_path = f'assets/notes/Piano.ff.{pitch_base}.aiff'
-        pg.mixer.Sound(note_path).play()
-        time.sleep(1)
-    note_path = f'assets/notes/Piano.ff.{notes[note_index]}.aiff'
-    pg.mixer.Sound(note_path).play()
-    time.sleep(2)
-    pg.mixer.stop()
-    #resetKeyBoard()
-
-def playNewNote():
-    selectNewNote()
-    playNote()
-
-def selectNotesAndPitches():
-    global notes, notes_freq
-    notes = [f'{k}{p}' for i, k in enumerate(keys) for j, p in enumerate(pitch_levels) if note_select[i][1].get()==1 and pitch_select[j][1].get()==1]
-    notes_freq = [1]*len(notes)
-    resetKeyBoard() 
-
-def resetKeyBoard():
-    for i, keyboard_panel in enumerate(keyboard):
-        pitch_select[i][0]['state'] = 'normal'
-        for j, button in enumerate(keyboard_panel):
-            note_select[j][0]['state'] = 'normal'
-            button["state"] = "normal" if pitch_select[i][1].get() == 1 and note_select[j][1].get() == 1 else "disabled"
-
-    play_button["state"] = "normal" if len(notes) else "disabled"
-
-def disableKeyboard():
-    for i, keyboard_panel in enumerate(keyboard):
-        pitch_select[i][0]['state'] = 'disabled'
-        for j, button in enumerate(keyboard_panel):
-            note_select[j][0]['state'] = 'disabled'
-            button["state"] = 'disabled'
-
-def matchNote(note_clicked):
-    global num_right, num_total
-    num_total += 1
-    #print(note_clicked)
-    disableKeyboard()
-    if notes[note_index].lower() != note_clicked.lower():
-        keyboard_frame.config(bg="red")
-        message_box.config(text=f'Wrong !!! {notes[note_index]} [{num_right} of {num_total}]')
-        notes_freq[note_index] += 1
-    else:
-        num_right += 1
-        keyboard_frame.config(bg="green")
-        message_box.config(text=f'Matched !!! [{num_right} of {num_total}]')
-    message_box.config(bg=message_box.master['bg'])
-    root.update()
-    time.sleep(2)
-    playNewNote()
-
-def setPitchBase(evt):
-    global pitch_base
-    pitch_base = pitch_base_value.get()
 
 pg.mixer.init()
 pg.init()
 
 keys = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B']
-pitch_levels = range(1, 8)
+pitch_levels = range(3, 6)
 notes, notes_freq = [], []
 num_total = num_right = 0
 note_index = -1
-pitch_base = "None"
+note_count = 1
+note_base = ""
 
-def getNoteSelectors():
+def selectNewNote():
+    global note_index
+    p = np.array(notes_freq)/np.sum(notes_freq)
+    note_index = np.random.choice(len(notes), 1, p=p)[0]
+
+def playNote():
+    if note_index < 0: selectNewNote()
+    if note_base != '':
+        note_path = f'assets/notes/{note_base}.mp3'
+        pg.mixer.Sound(note_path).play()
+        time.sleep(1)
+    note_path = f'assets/notes/{notes[note_index]}.mp3'
+    pg.mixer.Sound(note_path).play()
+    time.sleep(2)
+    pg.mixer.stop()
+
+def playNewNote():
+    if not notes: return
+    for _ in range(note_count):
+        selectNewNote()
+        playNote()
+
+def getNoteColSelectors():
     return html.Tr(
         children = 
             [
@@ -101,49 +53,61 @@ def getNoteSelectors():
                                 }
                             ],
                             value=[],
-                            id=f"chk_{keys[i]}"
+                            id={
+                                'type': f"chk_k",
+                                'index': keys[i]
+                            }
                         )
                     ]
                 ) for i in range(len(keys))
             ]
         )
 
-def getNotes():
+def getNotes(rows={}, cols={}):
     return (
-        html.Tbody(
-            children = [
-                html.Tr(
-                    children = 
-                        [
-                            dcc.Checklist(
-                                [
-                                    {
-                                        "label": html.Span(""),
-                                        "value": pitch_levels[i]
+        [
+            html.Tr(
+                children = 
+                    [
+                        html.Td(
+                            children=[
+                                dcc.Checklist(
+                                    [
+                                        {
+                                            "label": html.Span(""),
+                                            "value": pitch_levels[i]
+                                        }
+                                    ],
+                                    value=[pitch_levels[i]] if pitch_levels[i] in rows else [],
+                                    id={
+                                        'type': f"chk_p",
+                                        'index': pitch_levels[i]
                                     }
-                                ],
-                                value=[],
-                                id=f"chk_{pitch_levels[i]}"
-                            )
-                        ] +
-                        [
-                            html.Td(
-                                children=[
-                                    html.Button(
-                                        f"{keys[j]}{pitch_levels[i]}",
-                                        id=f"btn_{keys[j]}{pitch_levels[i]}",
-                                        disabled=True
-                                    )
-                                ]
-                            ) for j in range(len(keys))
-                        ]
-                ) for i in range(len(pitch_levels))
-            ]
-        )
+                                )
+                            ]
+                        )
+                    ] +
+                    [
+                        html.Td(
+                            children=[
+                                html.Button(
+                                    f"{keys[j]}{pitch_levels[i]}",
+                                    id={
+                                        "type":"btn_note",
+                                        "index": f"{keys[j]}{pitch_levels[i]}"
+                                    },
+                                    disabled= (f"{keys[j]}{pitch_levels[i]}" not in notes),
+                                    n_clicks=0
+                                )
+                            ]
+                        ) for j in range(len(keys))
+                    ]
+            ) for i in range(len(pitch_levels))
+        ]
     )
 
 app = Dash(__name__)
-app.title = "Music By Ear"
+app.title = "Ear Training"
 
 app.layout = html.Div(
         children=[
@@ -152,10 +116,19 @@ app.layout = html.Div(
                     html.Div(
                         children=[
                             dcc.Dropdown(
-                                keys,
+                                options=notes,
+                                id='node_base_selector',
                                 placeholder="Select a node base (Optional)",
                                 style={
-                                    "width":"300px"
+                                    "width":"250px"
+                                }
+                            ),
+                            dcc.Dropdown(
+                                options=list(range(1, len(notes)+int(note_base==""))),
+                                id='node_count_selector',
+                                placeholder="Select number of notes (Optional)",
+                                style={
+                                    "width":"250px"
                                 }
                             ),
                         ],
@@ -171,10 +144,13 @@ app.layout = html.Div(
                                 children=[
                                     html.Thead(
                                         children=[
-                                            getNoteSelectors()
+                                            getNoteColSelectors()
                                         ]
                                     ),
-                                    getNotes()
+                                    html.Tbody(
+                                        id = 'btn_container',
+                                        children=getNotes()
+                                    )
                                 ]
                             )
                         ],
@@ -185,18 +161,22 @@ app.layout = html.Div(
                         }
                     ),
                     html.Div(
-                        children=[
-                            html.Button(
-                                "Play Note",
-                                id=f"btn_play_note",
-                            )
-                        ]
+                        children=[html.Button(
+                                    'Play',
+                                    id=f"btn_play",
+                                    n_clicks=0
+                                )
+                        ],
+                        style={"display":"flex", "justifyContent": "center"}
                     ),
-                     html.P(id='placeholder'),
-                     html.Audio(id='audio-player', src='data:audio/mpeg;base64,{}'.format(encoded_sound.decode()),
-                          controls=True,
-                          autoPlay=False,
-                          ),
+                    html.Div(
+                        children=[
+                            html.P(
+                                id='placeholder'
+                            )
+                        ],
+                        style={"display":"flex", "justifyContent": "center"}
+                    ),
                 ],
                 style={
                     "width": "100%",
@@ -216,33 +196,65 @@ app.layout = html.Div(
         }
 )
 
-'''
-@app.callback(
-    Output("placeholder", "children"),
-    Input("btn_play_note", "n_clicks"),
+@callback(
+    Output("placeholder", "children", allow_duplicate=True),
+    Input('node_base_selector', 'value'),
     prevent_initial_call = True
 )
-def playNoteCallback(play_btn):
-    global notes, note_index
-    if ctx.triggered_id == "btn_play_note": 
-        notes = [f'{k}{p}' for k in keys for p in pitch_levels]
-        note_index = 0
-        for _ in range(10):
-            playNote()
-'''
+def select_note_base(value):
+    global note_base
+    note_base = value
+    return ''
 
-app.clientside_callback(
-    """
-    function(largeValue1, largeValue2) {
-        console.log('hello world');
-        var audio = new Audio('assets/notes/Piano.ff.C1.aiff');
-        audio.play();
-    }
-    """,
-    Output("placeholder", "children"),
-    Input("btn_play_note", "n_clicks")
+@callback(
+    Output("placeholder", "children", allow_duplicate=True),
+    Input('node_count_selector', 'value'),
+    prevent_initial_call = True
 )
+def select_note_count(value):
+    global note_count
+    note_count = value
+    return ''
 
+@callback(
+    Output('btn_container', 'children'),
+    Output('node_base_selector', 'options'),
+    Output('node_count_selector', 'options'),
+    Input({'type': 'chk_p', 'index': ALL}, 'value'),
+    Input({'type': 'chk_k', 'index': ALL}, 'value'),
+    prevent_initial_call = True
+)
+def check_columns(rows, cols):
+    global notes, notes_freq
+    rows = {item[0] for item in rows if len(item) > 0}
+    cols = {item[0] for item in cols if len(item) > 0}
+    if rows and cols:
+        notes = [f'{k}{p}' for p in pitch_levels for k in keys if k in cols and p in rows]
+    elif rows:
+        notes = [f'{k}{p}' for p in pitch_levels for k in keys if p in rows]
+    elif cols:
+        notes = [f'{k}{p}' for p in pitch_levels for k in keys if k in cols]
+    else:
+        notes = []
+    notes_freq = [1]*len(notes)
+    return getNotes(rows=rows, cols=cols), notes, list(range(1, max(2, len(notes)+int(note_base==""))))
+
+@callback(
+    Output("placeholder", "children", allow_duplicate=True),
+    Input('btn_play', 'n_clicks'),
+    prevent_initial_call = True
+)
+def play(value):
+    if ctx.triggered_id == 'btn_play' and value > 0:
+        playNewNote()
+
+@callback(
+    Output("placeholder", "children"),
+    Input({'type':'btn_note', 'index':ALL}, 'n_clicks'),
+    prevent_initial_call = True
+)
+def match(n_clicks):
+    if len(ctx.triggered_prop_ids) == 1 and -1 < note_index < len(notes): return "Matched !!" if ctx.triggered_id['index'] == notes[note_index] else "Wrong !!"
 
 if __name__ == '__main__':
     app.run_server(debug=True)
